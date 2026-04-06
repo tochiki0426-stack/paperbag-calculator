@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1e40af">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="紙袋計算">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>紙袋カット計算ツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:       #1e40af;
+      --primary-light: #3b82f6;
+      --primary-dark:  #1e3a8a;
+      --bg:            #eef2f7;
+      --card:          #ffffff;
+      --text:          #1e293b;
+      --text-sub:      #64748b;
+      --border:        #e2e8f0;
+      --warn-bg:       #fffbeb;
+      --warn-border:   #f59e0b;
+      --warn-text:     #92400e;
+      --success:       #059669;
+      --success-bg:    #ecfdf5;
+      --error:         #ef4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI',
+                   'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 3rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 1rem 1.25rem 0.9rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: .02em; }
+    header p  { font-size: .72rem; opacity: .75; margin-top: .2rem; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: var(--card);
+      border-bottom: 2px solid var(--border);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: .85rem 0;
+      border: none;
+      background: none;
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color .2s, border-color .2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* ── Panels ── */
+    .tab-panel          { display: none; padding: 1rem; }
+    .tab-panel.active   { display: block; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .card-title {
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Inputs ── */
+    .input-row {
+      display: flex;
+      gap: .65rem;
+      margin-bottom: .75rem;
+    }
+    .input-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+    label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: .65rem .6rem;
+      border: 2px solid var(--border);
+      border-radius: 9px;
+      font-size: 1rem;
+      color: var(--text);
+      background: #f8fafc;
+      transition: border-color .18s, background .18s;
+      -webkit-appearance: none;
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      background: #fff;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      padding: .78rem 1.2rem;
+      border: none;
+      border-radius: 9px;
+      font-size: .95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .btn:active { transform: scale(.97); opacity: .88; }
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+    .btn-sm {
+      padding: .42rem .75rem;
+      font-size: .8rem;
+      border-radius: 7px;
+    }
+    .btn-ghost {
+      background: #f1f5f9;
+      color: var(--text-sub);
+    }
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--error);
+    }
+
+    /* ── Single result ── */
+    .result-hero {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff;
+      border-radius: 12px;
+      padding: 1.1rem 1rem;
+      text-align: center;
+      margin-bottom: .85rem;
+    }
+    .result-hero .lbl  { font-size: .78rem; opacity: .8; margin-bottom: .25rem; }
+    .result-hero .val  { font-size: 1.75rem; font-weight: 800; letter-spacing: .03em; }
+    .result-hero .unit { font-size: .72rem; opacity: .75; margin-top: .15rem; }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .65rem;
+      margin-bottom: .85rem;
+    }
+    .result-cell {
+      background: #f8fafc;
+      border-radius: 9px;
+      padding: .7rem .6rem;
+      text-align: center;
+    }
+    .result-cell .lbl  { font-size: .72rem; color: var(--text-sub); margin-bottom: .22rem; }
+    .result-cell .val  { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+    .result-cell .unit { font-size: .68rem; color: var(--text-sub); }
+
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .detail-table tr + tr td { border-top: 1px solid var(--border); }
+    .detail-table td {
+      padding: .38rem .25rem;
+      font-size: .82rem;
+    }
+    .detail-table td:first-child { color: var(--text-sub); }
+    .detail-table td:last-child  { font-weight: 600; text-align: right; }
+
+    .warning-box {
+      background: var(--warn-bg);
+      border: 1.5px solid var(--warn-border);
+      border-radius: 9px;
+      padding: .7rem 1rem;
+      font-size: .83rem;
+      color: var(--warn-text);
+      margin-top: .85rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .5rem;
+      line-height: 1.4;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-sub);
+      padding: 2rem 1rem;
+      font-size: .9rem;
+      line-height: 1.6;
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: .5rem; }
+
+    /* ── Multi mode ── */
+    .product-item {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .75rem .8rem;
+      background: #f8fafc;
+      border-radius: 9px;
+      margin-bottom: .5rem;
+      border: 1.5px solid var(--border);
+    }
+    .product-num {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .product-info { flex: 1; min-width: 0; }
+    .product-dims  { font-size: .8rem; color: var(--text-sub); }
+    .product-sheet {
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: .18rem;
+    }
+    .product-warn  { font-size: .72rem; color: var(--warn-text); margin-top: .12rem; }
+
+    #product-list:empty::after {
+      content: '商品がありません';
+      display: block;
+      text-align: center;
+      color: var(--text-sub);
+      padding: 1.2rem;
+      font-size: .85rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .85rem;
+    }
+
+    /* ── Pattern cards ── */
+    .pattern-card {
+      border: 2px solid var(--border);
+      border-radius: 11px;
+      padding: .95rem 1rem;
+      margin-bottom: .65rem;
+      transition: border-color .2s, background .2s;
+    }
+    .pattern-card.best {
+      border-color: var(--success);
+      background: var(--success-bg);
+    }
+    .pattern-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .4rem;
+    }
+    .pattern-name {
+      font-size: .95rem;
+      font-weight: 700;
+    }
+    .badge-best {
+      background: var(--success);
+      color: #fff;
+      font-size: .68rem;
+      font-weight: 700;
+      padding: .2rem .5rem;
+      border-radius: 20px;
+      letter-spacing: .04em;
+    }
+    .pattern-dims {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .pattern-card.best .pattern-dims { color: var(--primary-dark); }
+    .pattern-meta {
+      font-size: .78rem;
+      color: var(--text-sub);
+      margin-top: .2rem;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: .9rem 0;
+    }
+
+    .hint {
+      font-size: .75rem;
+      color: var(--text-sub);
+      margin-top: .4rem;
+      line-height: 1.5;
+    }
+
+    /* ── Install button ── */
+    #btn-install {
+      display: none;
+      align-items: center;
+      gap: .35rem;
+      margin-left: auto;
+      padding: .38rem .8rem;
+      background: rgba(255,255,255,.18);
+      border: 1.5px solid rgba(255,255,255,.5);
+      border-radius: 20px;
+      color: #fff;
+      font-size: .78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #btn-install:hover  { background: rgba(255,255,255,.28); }
+    #btn-install.visible { display: inline-flex; }
+
+    /* ── Reset / Clear buttons ── */
+    .input-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .input-card-header .card-title { margin-bottom: 0; }
+    .btn-reset {
+      padding: .32rem .7rem;
+      font-size: .75rem;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: var(--text-sub);
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      font-weight: 600;
+      transition: background .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-reset:hover  { background: #e2e8f0; }
+    .btn-reset:active { transform: scale(.96); }
+  </style>
+</head>
+<body>
+
+<header style="display:flex;align-items:center;gap:.75rem">
+  <div style="flex:1">
+    <h1>📦 紙袋カット計算ツール</h1>
+    <p>商品寸法から切り出しサイズを自動計算</p>
+  </div>
+  <button id="btn-install" onclick="installApp()">⬇ インストール</button>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="single" onclick="switchTab('single')">1商品モード</button>
+  <button class="tab-btn"        data-tab="multi"  onclick="switchTab('multi')">複数商品モード</button>
+</div>
+
+<!-- ===== SINGLE MODE ===== -->
+<div id="panel-single" class="tab-panel active">
+
+  <div class="card">
+    <div class="input-card-header">
+      <div class="card-title">商品寸法を入力</div>
+      <button class="btn-reset" onclick="resetSingle()">リセット</button>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label for="s-A">A 縦 (mm)</label>
+        <input type="number" id="s-A" min="1" step="1" placeholder="200" inputmode="decimal">
+      </div>
+      <div class="input-group">
+        <label for="s-B">B 横 (mm)</label>
+        <input type="number" id="s-B" min="1" step="1" placeholder="100" inputmode="decimal">
+      </div>
+      <div class="input-group">
+        <label for="s-H">H 高さ (mm)</label>
+        <input type="number" id="s-H" min="1" step="1" placeholder="300" inputmode="decimal">
+      </div>
+    </div>
+    <p class="hint">余白 m=10 / のりしろ G=10 / 上端折り T=70 mm（固定値）</p>
+  </div>
+
+  <!-- Result -->
+  <div id="single-result" class="card" style="display:none">
+    <div class="card-title">切り出しサイズ</div>
+
+    <div class="result-hero">
+      <div class="lbl">シートサイズ（幅 × 高さ）</div>
+      <div class="val" id="s-sheet">— × —</div>
+      <div class="unit">mm</div>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-cell">
+        <div class="lbl">シート幅 W</div>
+        <div class="val" id="s-W">—</div>
+        <div class="unit">mm</div>
+      </div>
+      <div class="result-cell">
+        <div class="lbl">シート高 H</div>
+        <div class="val" id="s-Hs">—</div>
+        <div class="unit">mm</div>
+      </div>
+      <div class="result-cell">
+        <div class="lbl">前面幅 F</div>
+        <div class="val" id="s-F">—</div>
+        <div class="unit">mm</div>
+      </div>
+      <div class="result-cell">
+        <div class="lbl">マチ M</div>
+        <div class="val" id="s-M">—</div>
+        <div class="unit">mm</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <table class="detail-table">
+      <tr><td>底折り込み D</td>     <td id="s-D">— mm</td></tr>
+      <tr><td>のりしろ G</td>        <td>10 mm</td></tr>
+      <tr><td>上端折り返し T</td>    <td>70 mm</td></tr>
+      <tr><td>面積</td>              <td id="s-area">— cm²</td></tr>
+    </table>
+
+    <div id="s-warn" class="warning-box" style="display:none">
+      ⚠️ シート幅が <strong id="s-W-warn">—</strong> mm です。最小推奨サイズ 300mm を下回っています。
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="single-empty" class="card">
+    <div class="empty-state">
+      <div class="icon">📐</div>
+      A・B・H をすべて入力すると<br>自動でサイズが計算されます
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== MULTI MODE ===== -->
+<div id="panel-multi" class="tab-panel">
+
+  <div class="card">
+    <div class="input-card-header">
+      <div class="card-title">商品を追加</div>
+      <button class="btn-reset" onclick="clearMultiForm()">クリア</button>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label for="m-A">A 縦 (mm)</label>
+        <input type="number" id="m-A" min="1" step="1" placeholder="200" inputmode="decimal">
+      </div>
+      <div class="input-group">
+        <label for="m-B">B 横 (mm)</label>
+        <input type="number" id="m-B" min="1" step="1" placeholder="100" inputmode="decimal">
+      </div>
+      <div class="input-group">
+        <label for="m-H">H 高さ (mm)</label>
+        <input type="number" id="m-H" min="1" step="1" placeholder="300" inputmode="decimal">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="addProduct()">＋ 商品を追加</button>
+  </div>
+
+  <div class="card">
+    <div class="section-header">
+      <div class="card-title" style="margin-bottom:0">商品リスト</div>
+      <button class="btn btn-ghost btn-sm" onclick="clearProducts()">全削除</button>
+    </div>
+    <div id="product-list"></div>
+  </div>
+
+  <div id="multi-result" style="display:none">
+    <div class="card">
+      <div class="card-title">配置パターン比較</div>
+      <div id="pattern-cards"></div>
+    </div>
+  </div>
+
+  <div id="multi-hint" class="card">
+    <div class="empty-state">
+      <div class="icon">📊</div>
+      2商品以上追加すると<br>3パターンの配置比較が表示されます
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ====================================================
+  // 定数
+  // ====================================================
+  const MARGIN = 10;   // 余白 m
+  const GLUE   = 10;   // のりしろ G
+  const TOP    = 70;   // 上端折り返し T
+
+  // ====================================================
+  // 計算ロジック
+  // ====================================================
+  function calcBag(A, B, H) {
+    const Xmax = Math.max(A, B, H);
+    const Xmin = Math.min(A, B, H);
+    const Xmid = A + B + H - Xmax - Xmin;
+
+    const F      = Xmax + MARGIN;        // 前面幅
+    const M      = Xmin + MARGIN;        // マチ
+    const D      = M;                    // 底折り込み
+    const sheetW = GLUE + 2 * M + 2 * F;
+    const sheetH = (Xmid + MARGIN) + D + TOP;
+
+    return { sheetW, sheetH, F, M, D, warning: sheetW < 300 };
+  }
+
+  // ====================================================
+  // 1商品モード
+  // ====================================================
+  ['s-A', 's-B', 's-H'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calcSingle);
+  });
+
+  function calcSingle() {
+    const A = parseFloat(document.getElementById('s-A').value);
+    const B = parseFloat(document.getElementById('s-B').value);
+    const H = parseFloat(document.getElementById('s-H').value);
+
+    const valid = A > 0 && B > 0 && H > 0 && isFinite(A) && isFinite(B) && isFinite(H);
+    document.getElementById('single-result').style.display = valid ? 'block' : 'none';
+    document.getElementById('single-empty').style.display  = valid ? 'none'  : 'block';
+    if (!valid) return;
+
+    const r = calcBag(A, B, H);
+
+    document.getElementById('s-sheet').textContent = `${r.sheetW} × ${r.sheetH}`;
+    document.getElementById('s-W').textContent     = r.sheetW;
+    document.getElementById('s-Hs').textContent    = r.sheetH;
+    document.getElementById('s-F').textContent     = r.F;
+    document.getElementById('s-M').textContent     = r.M;
+    document.getElementById('s-D').textContent     = `${r.D} mm`;
+    document.getElementById('s-area').textContent  =
+      `${(r.sheetW * r.sheetH / 100).toFixed(0)} cm²`;
+
+    const warn = document.getElementById('s-warn');
+    if (r.warning) {
+      document.getElementById('s-W-warn').textContent = r.sheetW;
+      warn.style.display = 'flex';
+    } else {
+      warn.style.display = 'none';
+    }
+  }
+
+  // ====================================================
+  // 複数商品モード
+  // ====================================================
+  let products    = [];
+  let nextId      = 1;
+
+  function addProduct() {
+    const A = parseFloat(document.getElementById('m-A').value);
+    const B = parseFloat(document.getElementById('m-B').value);
+    const H = parseFloat(document.getElementById('m-H').value);
+
+    if (!(A > 0 && B > 0 && H > 0)) {
+      alert('A・B・H すべてに正の数値を入力してください');
+      return;
+    }
+
+    const r = calcBag(A, B, H);
+    products.push({ id: nextId++, dimA: A, dimB: B, dimH: H,
+                    sheetW: r.sheetW, sheetH: r.sheetH, warning: r.warning });
+
+    document.getElementById('m-A').value = '';
+    document.getElementById('m-B').value = '';
+    document.getElementById('m-H').value = '';
+    document.getElementById('m-A').focus();
+
+    renderProducts();
+    calcMulti();
+  }
+
+  function removeProduct(id) {
+    products = products.filter(p => p.id !== id);
+    renderProducts();
+    calcMulti();
+  }
+
+  function clearProducts() {
+    if (products.length === 0) return;
+    if (confirm('全商品を削除しますか？')) {
+      products = [];
+      renderProducts();
+      calcMulti();
+    }
+  }
+
+  function renderProducts() {
+    const list = document.getElementById('product-list');
+    list.innerHTML = products.map((p, i) => `
+      <div class="product-item">
+        <div class="product-num">${i + 1}</div>
+        <div class="product-info">
+          <div class="product-dims">A=${p.dimA} / B=${p.dimB} / H=${p.dimH} mm</div>
+          <div class="product-sheet">切出: ${p.sheetW} × ${p.sheetH} mm</div>
+          ${p.warning ? '<div class="product-warn">⚠️ シート幅300mm未満</div>' : ''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeProduct(${p.id})">削除</button>
+      </div>
+    `).join('');
+  }
+
+  function calcMulti() {
+    const resultEl = document.getElementById('multi-result');
+    const hintEl   = document.getElementById('multi-hint');
+
+    if (products.length < 2) {
+      resultEl.style.display = 'none';
+      hintEl.style.display   = 'block';
+      return;
+    }
+
+    const Ws = products.map(p => p.sheetW);
+    const Hs = products.map(p => p.sheetH);
+    const sumW   = Ws.reduce((a, v) => a + v, 0);
+    const sumH   = Hs.reduce((a, v) => a + v, 0);
+    const maxW   = Math.max(...Ws);
+    const maxH   = Math.max(...Hs);
+
+    // 3パターン
+    // 横並び: 全シートを横方向に並べる
+    // 縦並び: 全シートを縦方向に積む
+    // 縦積み: 各シートを90°回転して縦に積む（W→高さ方向, H→横幅方向）
+    const patterns = [
+      {
+        key: 'yoko',
+        name: '横並び',
+        desc: '全シートを横方向に並べる',
+        totalW: sumW,
+        totalH: maxH,
+        area:   sumW * maxH,
+      },
+      {
+        key: 'tate',
+        name: '縦並び',
+        desc: '全シートを縦方向に積む',
+        totalW: maxW,
+        totalH: sumH,
+        area:   maxW * sumH,
+      },
+      {
+        key: 'tate2',
+        name: '縦積み',
+        desc: '各シートを90°回転して縦に積む',
+        totalW: maxH,
+        totalH: sumW,
+        area:   maxH * sumW,
+      },
+    ];
+
+    const minArea = Math.min(...patterns.map(p => p.area));
+
+    document.getElementById('pattern-cards').innerHTML = patterns.map(p => {
+      const isBest = p.area === minArea;
+      return `
+        <div class="pattern-card ${isBest ? 'best' : ''}">
+          <div class="pattern-top">
+            <div class="pattern-name">${p.name}</div>
+            ${isBest ? '<span class="badge-best">★ 最小面積</span>' : ''}
+          </div>
+          <div class="pattern-meta">${p.desc}</div>
+          <hr class="divider" style="margin:.55rem 0">
+          <div class="pattern-dims">${p.totalW} × ${p.totalH} mm</div>
+          <div class="pattern-meta">
+            面積 ${(p.area / 100).toFixed(0)} cm²
+            &nbsp;(${p.totalW} mm × ${p.totalH} mm)
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    resultEl.style.display = 'block';
+    hintEl.style.display   = 'none';
+  }
+
+  // ====================================================
+  // リセット / クリア
+  // ====================================================
+  function resetSingle() {
+    ['s-A', 's-B', 's-H'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('single-result').style.display = 'none';
+    document.getElementById('single-empty').style.display  = 'block';
+    document.getElementById('s-A').focus();
+  }
+
+  function clearMultiForm() {
+    ['m-A', 'm-B', 'm-H'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('m-A').focus();
+  }
+
+  // ====================================================
+  // PWA インストール（PC Chrome/Edge 対応）
+  // ====================================================
+  let deferredInstallPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    document.getElementById('btn-install').classList.add('visible');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    document.getElementById('btn-install').classList.remove('visible');
+  });
+
+  function installApp() {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+      deferredInstallPrompt = null;
+      document.getElementById('btn-install').classList.remove('visible');
+    });
+  }
+
+  // ====================================================
+  // タブ切り替え
+  // ====================================================
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.getElementById('panel-single').classList.toggle('active', tab === 'single');
+    document.getElementById('panel-multi').classList.toggle('active', tab === 'multi');
+  }
+
+  // ====================================================
+  // Service Worker 登録
+  // ====================================================
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => {
+        console.warn('Service Worker 登録失敗:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

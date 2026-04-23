@@ -454,7 +454,9 @@
 
     <hr class="divider">
     <table class="detail-table">
-      <tr><td>底折り込み D</td>     <td id="s-D">— mm</td></tr>
+      <tr><td>袋幅（完成）</td>      <td id="s-bagW">— mm</td></tr>
+      <tr><td>袋高さ（完成）</td>    <td id="s-bagHdim">— mm</td></tr>
+      <tr><td>底折り込み D</td>      <td id="s-D">— mm</td></tr>
       <tr><td>のりしろ G</td>        <td>10 mm</td></tr>
       <tr><td>上端折り返し T</td>    <td>70 mm</td></tr>
       <tr><td>面積</td>              <td id="s-area">— cm²</td></tr>
@@ -462,6 +464,12 @@
 
     <div id="s-warn" class="warning-box" style="display:none">
       ⚠️ シート幅が <strong id="s-W-warn">—</strong> mm です。最小推奨サイズ 300mm を下回っています。
+    </div>
+
+    <div id="s-ship-warn" class="warning-box" style="display:none;flex-direction:column;gap:.4rem">
+      <div><strong>📮 完成袋が発送最小サイズ未満です</strong></div>
+      <div id="s-ship-detail" style="font-size:.8rem;line-height:1.8"></div>
+      <div id="s-ship-min" style="font-size:.8rem;line-height:1.8;border-top:1px solid #f59e0b;padding-top:.4rem"></div>
     </div>
   </div>
 
@@ -536,17 +544,42 @@
   // 計算ロジック
   // ====================================================
   function calcBag(A, B, H) {
-    const Xmax = Math.max(A, B, H);
-    const Xmin = Math.min(A, B, H);
-    const Xmid = A + B + H - Xmax - Xmin;
+    const Xmax = Math.max(A, B);   // H はソート対象外
+    const Xmin = Math.min(A, B);
 
-    const F      = Xmax + MARGIN;        // 前面幅
-    const M      = Xmin + MARGIN;        // マチ
-    const D      = M;                    // 底折り込み
+    const F      = Xmax + MARGIN;          // 前面幅
+    const M      = Xmin + MARGIN;          // マチ
+    const D      = M + 10;                 // 底折り込み（M+10）
     const sheetW = GLUE + 2 * M + 2 * F;
-    const sheetH = (Xmid + MARGIN) + D + TOP;
+    const sheetH = (H + MARGIN) + D + TOP; // H+10 + D + 70
 
-    return { sheetW, sheetH, F, M, D, warning: sheetW < 300 };
+    // ── 発送サイズチェック ──
+    const bagW       = F;            // 袋幅
+    const bagHdim    = H + MARGIN;   // 袋高さ（H+10）
+    const longSide   = Math.max(bagW, bagHdim);
+    const shortSide  = Math.min(bagW, bagHdim);
+    const shippingWarn = longSide < 140 || shortSide < 90;
+
+    // ── 逆算：クリアに必要な最低値 ──
+    let minXmax = null, minH = null;
+    if (shippingWarn) {
+      if (bagW >= bagHdim) {
+        // Fが長辺 → Xmax≥130, H≥80
+        minXmax = 130;
+        minH    = 80;
+      } else {
+        // H+10が長辺 → H≥130, Xmax≥80
+        minXmax = 80;
+        minH    = 130;
+      }
+    }
+
+    return {
+      sheetW, sheetH, F, M, D,
+      bagW, bagHdim, longSide, shortSide,
+      shippingWarn, minXmax, minH,
+      warning: sheetW < 300,
+    };
   }
 
   // ====================================================
@@ -568,21 +601,39 @@
 
     const r = calcBag(A, B, H);
 
-    document.getElementById('s-sheet').textContent = `${r.sheetW} × ${r.sheetH}`;
-    document.getElementById('s-W').textContent     = r.sheetW;
-    document.getElementById('s-Hs').textContent    = r.sheetH;
-    document.getElementById('s-F').textContent     = r.F;
-    document.getElementById('s-M').textContent     = r.M;
-    document.getElementById('s-D').textContent     = `${r.D} mm`;
-    document.getElementById('s-area').textContent  =
+    document.getElementById('s-sheet').textContent   = `${r.sheetW} × ${r.sheetH}`;
+    document.getElementById('s-W').textContent        = r.sheetW;
+    document.getElementById('s-Hs').textContent       = r.sheetH;
+    document.getElementById('s-F').textContent        = r.F;
+    document.getElementById('s-M').textContent        = r.M;
+    document.getElementById('s-D').textContent        = `${r.D} mm`;
+    document.getElementById('s-bagW').textContent     = `${r.bagW} mm`;
+    document.getElementById('s-bagHdim').textContent  = `${r.bagHdim} mm`;
+    document.getElementById('s-area').textContent     =
       `${(r.sheetW * r.sheetH / 100).toFixed(0)} cm²`;
 
+    // シート幅警告
     const warn = document.getElementById('s-warn');
     if (r.warning) {
       document.getElementById('s-W-warn').textContent = r.sheetW;
       warn.style.display = 'flex';
     } else {
       warn.style.display = 'none';
+    }
+
+    // 発送サイズ警告
+    const sw = document.getElementById('s-ship-warn');
+    if (r.shippingWarn) {
+      document.getElementById('s-ship-detail').innerHTML =
+        `長辺: <strong>${r.longSide}mm</strong>（必要: 140mm以上）<br>` +
+        `短辺: <strong>${r.shortSide}mm</strong>（必要: 90mm以上）`;
+      document.getElementById('s-ship-min').innerHTML =
+        `クリアに必要な最低値：<br>` +
+        `・max(A,B) ≥ <strong>${r.minXmax}mm</strong>（現在: ${Math.max(A,B)}mm）<br>` +
+        `・H ≥ <strong>${r.minH}mm</strong>（現在: ${H}mm）`;
+      sw.style.display = 'flex';
+    } else {
+      sw.style.display = 'none';
     }
   }
 
@@ -604,7 +655,11 @@
 
     const r = calcBag(A, B, H);
     products.push({ id: nextId++, dimA: A, dimB: B, dimH: H,
-                    sheetW: r.sheetW, sheetH: r.sheetH, warning: r.warning });
+                    sheetW: r.sheetW, sheetH: r.sheetH,
+                    warning: r.warning,
+                    shippingWarn: r.shippingWarn,
+                    longSide: r.longSide, shortSide: r.shortSide,
+                    minXmax: r.minXmax, minH: r.minH });
 
     document.getElementById('m-A').value = '';
     document.getElementById('m-B').value = '';
@@ -638,7 +693,8 @@
         <div class="product-info">
           <div class="product-dims">A=${p.dimA} / B=${p.dimB} / H=${p.dimH} mm</div>
           <div class="product-sheet">切出: ${p.sheetW} × ${p.sheetH} mm</div>
-          ${p.warning ? '<div class="product-warn">⚠️ シート幅300mm未満</div>' : ''}
+          ${p.warning      ? '<div class="product-warn">⚠️ シート幅300mm未満</div>' : ''}
+          ${p.shippingWarn ? `<div class="product-warn">📮 発送最小サイズ未満（長辺${p.longSide}mm／短辺${p.shortSide}mm）<br>最低値: max(A,B)≥${p.minXmax}mm・H≥${p.minH}mm</div>` : ''}
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeProduct(${p.id})">削除</button>
       </div>

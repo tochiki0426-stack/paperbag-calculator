@@ -462,10 +462,6 @@
       <tr><td>面積</td>              <td id="s-area">— cm²</td></tr>
     </table>
 
-    <div id="s-warn" class="warning-box" style="display:none">
-      ⚠️ シート幅が <strong id="s-W-warn">—</strong> mm です。最小推奨サイズ 300mm を下回っています。
-    </div>
-
     <div id="s-ship-warn" class="warning-box" style="display:none;flex-direction:column;gap:.4rem">
       <div><strong>📮 完成袋が発送最小サイズ未満です</strong></div>
       <div id="s-ship-detail" style="font-size:.8rem;line-height:1.8"></div>
@@ -561,7 +557,7 @@
     const shippingWarn = longSide < 140 || shortSide < 90;
 
     // ── 逆算：クリアに必要な最低値 ──
-    let minXmax = null, minH = null;
+    let minXmax = null, minH = null, minSheetW = null, minSheetH = null;
     if (shippingWarn) {
       if (bagW >= bagHdim) {
         // Fが長辺 → Xmax≥130, H≥80
@@ -572,13 +568,20 @@
         minXmax = 80;
         minH    = 130;
       }
+      // 最低値でのカットサイズを再計算
+      const reqXmax = Math.max(Xmax, minXmax);
+      const reqH    = Math.max(H,    minH);
+      const reqF    = reqXmax + MARGIN;
+      const reqM    = Xmin   + MARGIN;   // Xmin は変わらない
+      const reqD    = reqM   + 10;
+      minSheetW = GLUE + 2 * reqM + 2 * reqF;
+      minSheetH = (reqH + MARGIN) + reqD + TOP;
     }
 
     return {
       sheetW, sheetH, F, M, D,
       bagW, bagHdim, longSide, shortSide,
-      shippingWarn, minXmax, minH,
-      warning: sheetW < 300,
+      shippingWarn, minXmax, minH, minSheetW, minSheetH,
     };
   }
 
@@ -612,15 +615,6 @@
     document.getElementById('s-area').textContent     =
       `${(r.sheetW * r.sheetH / 100).toFixed(0)} cm²`;
 
-    // シート幅警告
-    const warn = document.getElementById('s-warn');
-    if (r.warning) {
-      document.getElementById('s-W-warn').textContent = r.sheetW;
-      warn.style.display = 'flex';
-    } else {
-      warn.style.display = 'none';
-    }
-
     // 発送サイズ警告
     const sw = document.getElementById('s-ship-warn');
     if (r.shippingWarn) {
@@ -630,7 +624,8 @@
       document.getElementById('s-ship-min').innerHTML =
         `クリアに必要な最低値：<br>` +
         `・max(A,B) ≥ <strong>${r.minXmax}mm</strong>（現在: ${Math.max(A,B)}mm）<br>` +
-        `・H ≥ <strong>${r.minH}mm</strong>（現在: ${H}mm）`;
+        `・H ≥ <strong>${r.minH}mm</strong>（現在: ${H}mm）<br><br>` +
+        `▶ 最低カットサイズ: <strong>${r.minSheetW} × ${r.minSheetH} mm</strong>`;
       sw.style.display = 'flex';
     } else {
       sw.style.display = 'none';
@@ -659,7 +654,8 @@
                     warning: r.warning,
                     shippingWarn: r.shippingWarn,
                     longSide: r.longSide, shortSide: r.shortSide,
-                    minXmax: r.minXmax, minH: r.minH });
+                    minXmax: r.minXmax, minH: r.minH,
+                    minSheetW: r.minSheetW, minSheetH: r.minSheetH });
 
     document.getElementById('m-A').value = '';
     document.getElementById('m-B').value = '';
@@ -693,8 +689,7 @@
         <div class="product-info">
           <div class="product-dims">A=${p.dimA} / B=${p.dimB} / H=${p.dimH} mm</div>
           <div class="product-sheet">切出: ${p.sheetW} × ${p.sheetH} mm</div>
-          ${p.warning      ? '<div class="product-warn">⚠️ シート幅300mm未満</div>' : ''}
-          ${p.shippingWarn ? `<div class="product-warn">📮 発送最小サイズ未満（長辺${p.longSide}mm／短辺${p.shortSide}mm）<br>最低値: max(A,B)≥${p.minXmax}mm・H≥${p.minH}mm</div>` : ''}
+          ${p.shippingWarn ? `<div class="product-warn">📮 発送最小サイズ未満（長辺${p.longSide}mm／短辺${p.shortSide}mm）<br>最低カットサイズ: ${p.minSheetW} × ${p.minSheetH} mm</div>` : ''}
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeProduct(${p.id})">削除</button>
       </div>

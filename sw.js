@@ -1,4 +1,4 @@
-const CACHE_NAME = 'paperbag-v5';
+const CACHE_NAME = 'paperbag-v6';
 const ASSETS = [
   './',
   './index.html',

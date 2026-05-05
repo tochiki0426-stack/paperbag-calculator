@@ -713,7 +713,17 @@
       const longS  = Math.max(F, bagHdim);
       const shortS = Math.min(F, bagHdim);
       const shipWarn = longS < 140 || shortS < 90;
-      return { name, desc, F, M, D, sheetW, sheetH, area, longS, shortS, shipWarn };
+
+      // 逆算：発送最小サイズをクリアするための最低カットサイズ
+      let minSheetW = null, minSheetH = null;
+      if (shipWarn) {
+        const reqF       = F >= bagHdim ? Math.max(F, 140) : Math.max(F, 90);
+        const reqBagHdim = bagHdim > F  ? Math.max(bagHdim, 140) : Math.max(bagHdim, 90);
+        minSheetW = 10 + 2 * M + 2 * reqF;
+        minSheetH = reqBagHdim + D + 70;
+      }
+
+      return { name, desc, F, M, D, sheetW, sheetH, area, longS, shortS, shipWarn, minSheetW, minSheetH };
     }
 
     const patterns = [
@@ -740,8 +750,9 @@
             F=${p.F} / M=${p.M} / D=${p.D} mm
           </div>
           ${p.shipWarn ? `
-            <div class="warning-box" style="margin-top:.65rem;font-size:.78rem;padding:.5rem .75rem">
-              📮 発送最小サイズ未満（長辺 ${p.longS}mm / 短辺 ${p.shortS}mm）
+            <div class="warning-box" style="margin-top:.65rem;font-size:.78rem;padding:.5rem .75rem;flex-direction:column;gap:.25rem">
+              <div>📮 発送最小サイズ未満（長辺 ${p.longS}mm / 短辺 ${p.shortS}mm）</div>
+              <div>▶ 最低カットサイズ: <strong>${p.minSheetW} × ${p.minSheetH} mm</strong></div>
             </div>
           ` : ''}
         </div>

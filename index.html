@@ -514,7 +514,7 @@
 
   <div id="multi-result" style="display:none">
     <div class="card">
-      <div class="card-title">配置パターン比較</div>
+      <div class="card-title">詰め合わせパターン比較</div>
       <div id="pattern-cards"></div>
     </div>
   </div>
@@ -522,7 +522,7 @@
   <div id="multi-hint" class="card">
     <div class="empty-state">
       <div class="icon">📊</div>
-      2商品以上追加すると<br>3パターンの配置比較が表示されます
+      2商品以上追加すると<br>詰め合わせ袋の最小カットサイズを<br>3パターンで比較します
     </div>
   </div>
 
@@ -648,14 +648,7 @@
       return;
     }
 
-    const r = calcBag(A, B, H);
-    products.push({ id: nextId++, dimA: A, dimB: B, dimH: H,
-                    sheetW: r.sheetW, sheetH: r.sheetH,
-                    warning: r.warning,
-                    shippingWarn: r.shippingWarn,
-                    longSide: r.longSide, shortSide: r.shortSide,
-                    minXmax: r.minXmax, minH: r.minH,
-                    minSheetW: r.minSheetW, minSheetH: r.minSheetH });
+    products.push({ id: nextId++, dimA: A, dimB: B, dimH: H });
 
     document.getElementById('m-A').value = '';
     document.getElementById('m-B').value = '';
@@ -688,8 +681,6 @@
         <div class="product-num">${i + 1}</div>
         <div class="product-info">
           <div class="product-dims">A=${p.dimA} / B=${p.dimB} / H=${p.dimH} mm</div>
-          <div class="product-sheet">切出: ${p.sheetW} × ${p.sheetH} mm</div>
-          ${p.shippingWarn ? `<div class="product-warn">📮 発送最小サイズ未満（長辺${p.longSide}mm／短辺${p.shortSide}mm）<br>最低カットサイズ: ${p.minSheetW} × ${p.minSheetH} mm</div>` : ''}
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeProduct(${p.id})">削除</button>
       </div>
@@ -706,42 +697,29 @@
       return;
     }
 
-    const Ws = products.map(p => p.sheetW);
-    const Hs = products.map(p => p.sheetH);
-    const sumW   = Ws.reduce((a, v) => a + v, 0);
-    const sumH   = Hs.reduce((a, v) => a + v, 0);
-    const maxW   = Math.max(...Ws);
-    const maxH   = Math.max(...Hs);
+    const sumA = products.reduce((s, p) => s + p.dimA, 0);
+    const maxA = Math.max(...products.map(p => p.dimA));
+    const sumB = products.reduce((s, p) => s + p.dimB, 0);
+    const maxB = Math.max(...products.map(p => p.dimB));
+    const sumH = products.reduce((s, p) => s + p.dimH, 0);
+    const maxH = Math.max(...products.map(p => p.dimH));
 
-    // 3パターン
-    // 横並び: 全シートを横方向に並べる
-    // 縦並び: 全シートを縦方向に積む
-    // 縦積み: 各シートを90°回転して縦に積む（W→高さ方向, H→横幅方向）
+    // F・M は +10 込みで渡す、bagHdim も +10 込みで渡す
+    function makePattern(name, desc, F, M, bagHdim) {
+      const D      = M + 10;
+      const sheetW = 10 + 2 * M + 2 * F;
+      const sheetH = bagHdim + D + 70;
+      const area   = sheetW * sheetH;
+      const longS  = Math.max(F, bagHdim);
+      const shortS = Math.min(F, bagHdim);
+      const shipWarn = longS < 140 || shortS < 90;
+      return { name, desc, F, M, D, sheetW, sheetH, area, longS, shortS, shipWarn };
+    }
+
     const patterns = [
-      {
-        key: 'yoko',
-        name: '横並び',
-        desc: '全シートを横方向に並べる',
-        totalW: sumW,
-        totalH: maxH,
-        area:   sumW * maxH,
-      },
-      {
-        key: 'tate',
-        name: '縦並び',
-        desc: '全シートを縦方向に積む',
-        totalW: maxW,
-        totalH: sumH,
-        area:   maxW * sumH,
-      },
-      {
-        key: 'tate2',
-        name: '縦積み',
-        desc: '各シートを90°回転して縦に積む',
-        totalW: maxH,
-        totalH: sumW,
-        area:   maxH * sumW,
-      },
+      makePattern('横並び',   '全商品を幅方向に横並び（Aを合算）',    sumA + 10, maxB + 10, maxH + 10),
+      makePattern('縦積み',   '全商品をマチ方向に縦積み（Bを合算）',  maxA + 10, sumB + 10, maxH + 10),
+      makePattern('高さ重ね', '全商品を高さ方向に重ねる（Hを合算）',  maxA + 10, maxB + 10, sumH + 10),
     ];
 
     const minArea = Math.min(...patterns.map(p => p.area));
@@ -756,11 +734,16 @@
           </div>
           <div class="pattern-meta">${p.desc}</div>
           <hr class="divider" style="margin:.55rem 0">
-          <div class="pattern-dims">${p.totalW} × ${p.totalH} mm</div>
-          <div class="pattern-meta">
-            面積 ${(p.area / 100).toFixed(0)} cm²
-            &nbsp;(${p.totalW} mm × ${p.totalH} mm)
+          <div class="pattern-dims">${p.sheetW} × ${p.sheetH} mm</div>
+          <div class="pattern-meta">面積 ${(p.area / 100).toFixed(0)} cm²</div>
+          <div class="pattern-meta" style="margin-top:.3rem">
+            F=${p.F} / M=${p.M} / D=${p.D} mm
           </div>
+          ${p.shipWarn ? `
+            <div class="warning-box" style="margin-top:.65rem;font-size:.78rem;padding:.5rem .75rem">
+              📮 発送最小サイズ未満（長辺 ${p.longS}mm / 短辺 ${p.shortS}mm）
+            </div>
+          ` : ''}
         </div>
       `;
     }).join('');
